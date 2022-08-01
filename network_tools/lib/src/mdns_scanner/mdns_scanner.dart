@@ -13,12 +13,16 @@ class MdnsScanner {
   /// TODO: https://github.com/flutter/flutter/issues/97210
   /// TODO: In some cases we resolve this missing functionality using
   /// TODO: specific os tools.
-  static Future<List<ActiveHost>> searchMdnsDevices() async {
+  static Future<List<ActiveHost>> searchMdnsDevices({
+    bool forceUseOfSavedSrvRecordList = false,
+  }) async {
     List<String> srvRecordListToSearchIn;
 
     final List<String>? srvRecordsFromOs = await SrvList.getSrvRecordList();
 
-    if (srvRecordsFromOs == null || srvRecordsFromOs.isEmpty) {
+    if (srvRecordsFromOs == null ||
+        srvRecordsFromOs.isEmpty ||
+        forceUseOfSavedSrvRecordList) {
       srvRecordListToSearchIn = tcpSrvRecordsList;
       srvRecordListToSearchIn.addAll(udpSrvRecordsList);
     } else {
@@ -56,11 +60,8 @@ class MdnsScanner {
         ResourceRecordQuery.service(ptr.domainName),
       )) {
         final MdnsInfo mdnsFound = MdnsInfo(
-          mdnsName: srv.name,
-          mdnsPort: srv.port,
-          mdnsDomainName: ptr.domainName,
-          mdnsServiceType: serviceType,
-          mdnsSrvTarget: srv.target,
+          srvResourceRecord: srv,
+          ptrResourceRecord: ptr,
         );
         mdnsFoundList.add(mdnsFound);
       }
@@ -69,9 +70,13 @@ class MdnsScanner {
 
     final List<ActiveHost> listOfActiveHost = [];
     for (final MdnsInfo foundMdns in mdnsFoundList) {
-      final List<InternetAddress> internetAddressList =
-          await InternetAddress.lookup(foundMdns.mdnsSrvTarget);
-
+      final List<InternetAddress>? internetAddressList;
+      try {
+        internetAddressList =
+            await InternetAddress.lookup(foundMdns.mdnsSrvTarget);
+      } catch (e) {
+        continue;
+      }
       // There can be multiple devices with the same name
       for (final InternetAddress internetAddress in internetAddressList) {
         final ActiveHost tempHost = ActiveHost(

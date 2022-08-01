@@ -1,22 +1,37 @@
+import 'package:multicast_dns/multicast_dns.dart';
+
 class MdnsInfo {
   MdnsInfo({
-    required this.mdnsName,
-    required this.mdnsPort,
-    required this.mdnsDomainName,
-    required this.mdnsServiceType,
-    required this.mdnsSrvTarget,
+    required this.srvResourceRecord,
+    required this.ptrResourceRecord,
   });
 
   /// Also can be called target
-  String mdnsName;
-  String mdnsSrvTarget;
-  int mdnsPort;
+  String get mdnsName => srvResourceRecord.name;
+
+  String get mdnsSrvTarget => srvResourceRecord.target;
+  int get mdnsPort => srvResourceRecord.port;
 
   /// Also can be called bundleId
-  String mdnsDomainName;
+  String get mdnsDomainName => ptrResourceRecord.domainName;
 
   /// Srv record of the dns
-  String mdnsServiceType;
+  String get mdnsServiceType {
+    final List<String> ptrNameSplit = ptrResourceRecord.name.split('.');
+    String tempString = '';
+    if (ptrNameSplit.isNotEmpty) {
+      tempString = ptrNameSplit[0];
+    }
+    if (ptrNameSplit.length >= 2) {
+      tempString = '$tempString.${ptrNameSplit[1]}';
+    }
+
+    return tempString;
+  }
+
+  SrvResourceRecord srvResourceRecord;
+
+  PtrResourceRecord ptrResourceRecord;
 
   /// mDNS name without the ._tcp.local
   String getOnlyTheStartOfMdnsName() {
